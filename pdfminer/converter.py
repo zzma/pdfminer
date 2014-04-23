@@ -484,24 +484,29 @@ class XMLConverter(PDFConverter):
         self.write_footer()
         return
 
-##  SigConverter
+
+def mergeBounds(bbox1, bbox2):
+    x0 = min(bbox1[::2] + bbox2[::2])
+    y0 = min(bbox1[1::2] + bbox2[1::2])
+    x1 = max(bbox1[::2] + bbox2[::2])
+    y1 = max(bbox1[1::2] + bbox2[1::2])
+
+    return (x0, y0, x1, y1)
+##  TagConverter
 ##
-class SigConverter(PDFConverter):
+class TagConverter(PDFConverter):
 
     def __init__(self, rsrcmgr, outfp, codec='utf-8', pageno=1,
                  laparams=None, imagewriter=None):
+        self.inTagBlock = False
+        self.prevItem = None
+        self.prevprevItem = None
+        self.tagText = ''
+        self.startingItem = None
+        self.endingItem = None
+
         PDFConverter.__init__(self, rsrcmgr, outfp, codec=codec, pageno=pageno, laparams=laparams)
         self.imagewriter = imagewriter
-        self.write_header()
-        return
-
-    def write_header(self):
-        self.outfp.write('<?xml version="1.0" encoding="%s" ?>\n' % self.codec)
-        self.outfp.write('<pages>\n')
-        return
-
-    def write_footer(self):
-        self.outfp.write('</pages>\n')
         return
 
     def write_text(self, text):
@@ -522,66 +527,46 @@ class SigConverter(PDFConverter):
 
         def render(item):
             if isinstance(item, LTPage):
-                self.outfp.write('<page id="%s" bbox="%s" rotate="%d">\n' %
-                                 (item.pageid, bbox2str(item.bbox), item.rotate))
                 for child in item:
                     render(child)
-                if item.groups is not None:
-                    self.outfp.write('<layout>\n')
-                    for group in item.groups:
-                        show_group(group)
-                    self.outfp.write('</layout>\n')
-                self.outfp.write('</page>\n')
-            elif isinstance(item, LTLine):
-                self.outfp.write('<line linewidth="%d" bbox="%s" />\n' %
-                                 (item.linewidth, bbox2str(item.bbox)))
-            elif isinstance(item, LTRect):
-                self.outfp.write('<rect linewidth="%d" bbox="%s" />\n' %
-                                 (item.linewidth, bbox2str(item.bbox)))
-            elif isinstance(item, LTCurve):
-                self.outfp.write('<curve linewidth="%d" bbox="%s" pts="%s"/>\n' %
-                                 (item.linewidth, bbox2str(item.bbox), item.get_pts()))
-            elif isinstance(item, LTFigure):
-                self.outfp.write('<figure name="%s" bbox="%s">\n' %
-                                 (item.name, bbox2str(item.bbox)))
-                for child in item:
-                    render(child)
-                self.outfp.write('</figure>\n')
             elif isinstance(item, LTTextLine):
-                self.outfp.write('<textline bbox="%s">\n' % bbox2str(item.bbox))
                 for child in item:
                     render(child)
-                self.outfp.write('</textline>\n')
             elif isinstance(item, LTTextBox):
-                wmode = ''
-                if isinstance(item, LTTextBoxVertical):
-                    wmode = ' wmode="vertical"'
-                self.outfp.write('<textbox id="%d" bbox="%s"%s>\n' %
-                                 (item.index, bbox2str(item.bbox), wmode))
                 for child in item:
                     render(child)
-                self.outfp.write('</textbox>\n')
             elif isinstance(item, LTChar):
-                self.outfp.write('<text font="%s" bbox="%s" size="%.3f">' %
-                                 (enc(item.fontname), bbox2str(item.bbox), item.size))
-                self.write_text(item.get_text())
-                self.outfp.write('</text>\n')
+                
+                prevChar = self.prevItem.get_text() if self.prevItem else ''
+                prevprevChar = self.prevprevItem.get_text() if self.prevprevItem else ''
+                text = item.get_text()
+
+                if not self.inTagBlock and prevChar == '{' and prevprevChar == '{':
+                    self.startingItem = self.prevprevItem
+                    self.inTagBlock = True                
+                
+                if self.inTagBlock and not text.isspace():
+                    self.tagText += text
+
+                if self.inTagBlock and prevChar == '}' and prevprevChar == '}':
+                    self.endingItem = self.prevItem
+                    self.inTagBlock = False
+                    self.outfp.write('%.3f,%.3f,%.3f,%.3f,' %
+                                 (mergeBounds(self.startingItem.bbox, self.endingItem.bbox)))
+                    self.write_text("'{{" + self.tagText + "'\n")
+                    self.tagText = ''
+
+                self.prevprevItem = self.prevItem
+                self.prevItem = item
+                
             elif isinstance(item, LTText):
-                self.outfp.write('<text>%s</text>\n' % item.get_text())
-            elif isinstance(item, LTImage):
-                if self.imagewriter is not None:
-                    name = self.imagewriter.export_image(item)
-                    self.outfp.write('<image src="%s" width="%d" height="%d" />\n' %
-                                     (enc(name), item.width, item.height))
-                else:
-                    self.outfp.write('<image width="%d" height="%d" />\n' %
-                                     (item.width, item.height))
-            else:
-                assert 0, item
+                if not item.get_text().isspace():
+                    self.outfp.write('<text>%s</text>\n' % item.get_text())
+
             return
+
         render(ltpage)
         return
 
     def close(self):
-        self.write_footer()
         return

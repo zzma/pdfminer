@@ -5,7 +5,7 @@ from pdfminer.pdfparser import PDFParser
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.pdfdevice import PDFDevice, TagExtractor
 from pdfminer.pdfpage import PDFPage
-from pdfminer.converter import XMLConverter, HTMLConverter, TextConverter, SigConverter
+from pdfminer.converter import XMLConverter, HTMLConverter, TextConverter, TagConverter
 from pdfminer.cmapdb import CMapDB
 from pdfminer.layout import LAParams
 from pdfminer.image import ImageWriter
@@ -96,9 +96,7 @@ def main(argv):
                                layoutmode=layoutmode, laparams=laparams,
                                imagewriter=imagewriter)
     elif outtype == 'tag':
-        device = TagExtractor(rsrcmgr, outfp, codec=codec)
-    elif outtype == 'sig':
-        device = SigConverter(rsrcmgr, outfp, codec=codec, laparams=laparams,
+        device = TagConverter(rsrcmgr, outfp, codec=codec, laparams=laparams,
                               imagewriter=imagewriter)
     else:
         return usage()
