@@ -112,7 +112,9 @@ is a list of the changes:
 
 TODO
 ----
-
+ * Add ability to detect textbox fields (non-visible tags)
+ * Add ability to remove text tags from the document
+ * Handle textboxes as signature/data fields
  * Replace STRICT variable with something better.
  * Use logging module instead of sys.stderr.
  * Proper test cases.
