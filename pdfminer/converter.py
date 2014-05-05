@@ -504,6 +504,7 @@ class TagConverter(PDFConverter):
         self.tagText = ''
         self.startingItem = None
         self.endingItem = None
+        self.pageNum = 0
 
         PDFConverter.__init__(self, rsrcmgr, outfp, codec=codec, pageno=pageno, laparams=laparams)
         self.imagewriter = imagewriter
@@ -527,6 +528,7 @@ class TagConverter(PDFConverter):
 
         def render(item):
             if isinstance(item, LTPage):
+                self.pageNum += 1
                 for child in item:
                     render(child)
             elif isinstance(item, LTTextLine):
@@ -551,6 +553,7 @@ class TagConverter(PDFConverter):
                 if self.inTagBlock and prevChar == '}' and prevprevChar == '}':
                     self.endingItem = self.prevItem
                     self.inTagBlock = False
+                    self.outfp.write(str(self.pageNum) + ',')
                     self.outfp.write('%.3f,%.3f,%.3f,%.3f,' %
                                  (mergeBounds(self.startingItem.bbox, self.endingItem.bbox)))
                     self.write_text("'{{" + self.tagText + "'\n")
