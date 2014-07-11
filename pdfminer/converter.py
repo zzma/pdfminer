@@ -3,7 +3,7 @@ import sys
 from pdfdevice import PDFTextDevice
 from pdffont import PDFUnicodeNotDefined
 from layout import LTContainer, LTPage, LTText, LTLine, LTRect, LTCurve
-from layout import LTFigure, LTImage, LTChar, LTTextLine
+from layout import LTFigure, LTImage, LTChar, LTTextLine, LTWidget
 from layout import LTTextBox, LTTextBoxVertical, LTTextGroup
 from utils import apply_matrix_pt, mult_matrix
 from utils import enc, bbox2str
@@ -89,6 +89,10 @@ class PDFLayoutAnalyzer(PDFTextDevice):
                 pts.append(apply_matrix_pt(self.ctm, (p[i], p[i+1])))
         self.cur_item.add(LTCurve(gstate.linewidth, pts))
         return
+
+    def render_widgets(self, widgets):
+        for w in widgets:
+            self.cur_item.add(w)
 
     def render_char(self, matrix, font, fontsize, scaling, rise, cid):
         try:
@@ -492,6 +496,7 @@ def mergeBounds(bbox1, bbox2):
     y1 = max(bbox1[1::2] + bbox2[1::2])
 
     return (x0, y0, x1, y1)
+
 ##  TagConverter
 ##
 class TagConverter(PDFConverter):
@@ -504,7 +509,6 @@ class TagConverter(PDFConverter):
         self.tagText = ''
         self.startingItem = None
         self.endingItem = None
-        self.pageNum = 0
 
         PDFConverter.__init__(self, rsrcmgr, outfp, codec=codec, pageno=pageno, laparams=laparams)
         self.imagewriter = imagewriter
@@ -528,7 +532,6 @@ class TagConverter(PDFConverter):
 
         def render(item):
             if isinstance(item, LTPage):
-                self.pageNum += 1
                 for child in item:
                     render(child)
             elif isinstance(item, LTTextLine):
@@ -537,6 +540,12 @@ class TagConverter(PDFConverter):
             elif isinstance(item, LTTextBox):
                 for child in item:
                     render(child)
+            elif isinstance(item, LTWidget):
+                    self.outfp.write(str(self.pageno) + ',')
+                    self.outfp.write('%.3f,%.3f,%.3f,%.3f,' %
+                                 (item.bbox[0], item.bbox[1], item.bbox[2], item.bbox[3]))
+                    #self.outfp.write(item.wtype + ',')
+                    self.write_text("'" + item.get_text() + "'" + '\n')
             elif isinstance(item, LTChar):
                 
                 prevChar = self.prevItem.get_text() if self.prevItem else ''
@@ -553,7 +562,7 @@ class TagConverter(PDFConverter):
                 if self.inTagBlock and prevChar == '}' and prevprevChar == '}':
                     self.endingItem = self.prevItem
                     self.inTagBlock = False
-                    self.outfp.write(str(self.pageNum) + ',')
+                    self.outfp.write(str(self.pageno) + ',')
                     self.outfp.write('%.3f,%.3f,%.3f,%.3f,' %
                                  (mergeBounds(self.startingItem.bbox, self.endingItem.bbox)))
                     self.write_text("'{{" + self.tagText + "'\n")

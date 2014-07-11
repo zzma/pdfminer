@@ -185,7 +185,6 @@ class LTImage(LTComponent):
                 (self.__class__.__name__, self.name,
                  bbox2str(self.bbox), self.srcsize))
 
-
 ##  LTAnno
 ##
 class LTAnno(LTItem, LTText):
@@ -197,7 +196,20 @@ class LTAnno(LTItem, LTText):
     def get_text(self):
         return self._text
 
+##  LTWidget
+##
+class LTWidget(LTComponent, LTText):
+    
+    def __init__(self, bbox, wtype, text):
+        #TODO: add fontsize
+        self._text = text
+        LTComponent.__init__(self, bbox)
+        self.wtype = wtype
 
+    def get_text(self):
+        return self._text
+
+    
 ##  LTChar
 ##
 class LTChar(LTComponent, LTText):

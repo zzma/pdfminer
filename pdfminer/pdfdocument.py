@@ -16,6 +16,7 @@ from pdftypes import int_value
 from pdftypes import str_value, list_value, dict_value, stream_value
 from pdfparser import PDFSyntaxError
 from pdfparser import PDFStreamParser
+from layout import LTWidget
 from arcfour import Arcfour
 from utils import choplist, nunpack
 from utils import decode_text
@@ -45,7 +46,11 @@ class PDFTextExtractionNotAllowed(PDFEncryptionError):
 LITERAL_OBJSTM = LIT('ObjStm')
 LITERAL_XREF = LIT('XRef')
 LITERAL_CATALOG = LIT('Catalog')
-
+LITERAL_BTN = LIT('Btn')
+LITERAL_TX = LIT('Tx')
+LITERAL_CH = LIT('Ch')
+LITERAL_SIG = LIT('Sig')
+LITERAL_WIDGET = LIT('Widget')
 
 ##  XRefs
 ##
@@ -296,6 +301,7 @@ class PDFDocument(object):
         self.catalog = None
         self.encryption = None
         self.decipher = None
+        self.form_widgets = []
         self._parser = None
         self._cached_objs = {}
         self._parsed_objs = {}
@@ -335,6 +341,8 @@ class PDFDocument(object):
         if self.catalog.get('Type') is not LITERAL_CATALOG:
             if STRICT:
                 raise PDFSyntaxError('Catalog not found!')
+        
+        #self.get_acroform()
         return
 
     # _initialize_password(password='')
@@ -504,7 +512,7 @@ class PDFDocument(object):
                     yield x
             return
         return search(self.catalog['Outlines'], 0)
-
+    
     def lookup_name(self, cat, key):
         try:
             names = dict_value(self.catalog['Names'])

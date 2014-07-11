@@ -3,16 +3,21 @@ import sys
 from psparser import LIT
 from pdftypes import PDFObjectNotFound
 from pdftypes import resolve1
-from pdftypes import int_value, list_value, dict_value
+from pdftypes import int_value, list_value, dict_value, str_value
 from pdfparser import PDFParser
 from pdfdocument import PDFDocument
 from pdfdocument import PDFEncryptionError
 from pdfdocument import PDFTextExtractionNotAllowed
+from layout import LTWidget
 
 # some predefined literals and keywords.
 LITERAL_PAGE = LIT('Page')
 LITERAL_PAGES = LIT('Pages')
-
+LITERAL_WIDGET = LIT('Widget')
+LITERAL_BTN = LIT('Btn')
+LITERAL_TX = LIT('Tx')
+LITERAL_CH = LIT('Ch')
+LITERAL_SIG = LIT('Sig')
 
 ##  PDFPage
 ##
@@ -56,7 +61,25 @@ class PDFPage(object):
         else:
             self.cropbox = self.mediabox
         self.rotate = (int_value(self.attrs.get('Rotate', 0))+360) % 360
-        self.annots = self.attrs.get('Annots')
+        self.annots = list_value(self.attrs.get('Annots'))
+        self.widgets = []
+        for an in self.annots:
+            try:
+                obj = dict_value(an.resolve())
+            except PDFObjectNotFound:
+                print 'object not found'
+                print an
+                continue
+            if 'Subtype' in obj and obj.get('Subtype') is LITERAL_WIDGET:
+                if obj.get('FT') is LITERAL_TX:
+                    self.widgets.append(LTWidget(list_value(obj.get('Rect')), 'text', str_value(obj.get('T'))))
+                elif obj.get('FT') is LITERAL_CH:
+                    self.widgets.append(LTWidget(list_value(obj.get('Rect')), 'checkbox', str_value(obj.get('T'))))
+                elif obj.get('FT') is LITERAL_BTN:
+                    self.widgets.append(LTWidget(list_value(obj.get('Rect')), 'checkbox', str_value(obj.get('T'))))
+                elif obj.get('FT') is LITERAL_SIG:
+                    self.widgets.append(LTWidget(list_value(obj.get('Rect')), 'signature', str_value(obj.get('T'))))
+
         self.beads = self.attrs.get('B')
         if 'Contents' in self.attrs:
             contents = resolve1(self.attrs['Contents'])

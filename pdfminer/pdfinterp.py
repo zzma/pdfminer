@@ -830,6 +830,7 @@ class PDFPageInterpreter(object):
             ctm = (1, 0, 0, 1, -x0, -y0)
         self.device.begin_page(page, ctm)
         self.render_contents(page.resources, page.contents, ctm=ctm)
+        self.device.render_widgets(page.widgets)
         self.device.end_page(page)
         return
 
