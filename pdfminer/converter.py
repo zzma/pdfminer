@@ -515,7 +515,11 @@ class TagConverter(PDFConverter):
         return
 
     def write_text(self, text):
-        self.outfp.write(enc(text, self.codec))
+        self.outfp.write(text)
+        #if isinstance(text, str):
+        #    self.outfp.write(unicode(text, 'utf-8'))
+        #elif isinstance(text, unicode):
+        #    self.outfp.write(enc(text, self.codec))
         return
 
     def receive_layout(self, ltpage):
@@ -541,11 +545,11 @@ class TagConverter(PDFConverter):
                 for child in item:
                     render(child)
             elif isinstance(item, LTWidget):
-                    self.outfp.write(str(self.pageno) + ',')
+                    self.outfp.write(str(self.pageno-1) + ',')
                     self.outfp.write('%.3f,%.3f,%.3f,%.3f,' %
                                  (item.bbox[0], item.bbox[1], item.bbox[2], item.bbox[3]))
                     #self.outfp.write(item.wtype + ',')
-                    self.write_text("'" + item.get_text() + "'" + '\n')
+                    self.write_text(item.get_text() + '\n')
             elif isinstance(item, LTChar):
                 
                 prevChar = self.prevItem.get_text() if self.prevItem else ''
@@ -562,7 +566,7 @@ class TagConverter(PDFConverter):
                 if self.inTagBlock and prevChar == '}' and prevprevChar == '}':
                     self.endingItem = self.prevItem
                     self.inTagBlock = False
-                    self.outfp.write(str(self.pageno) + ',')
+                    self.outfp.write(str(self.pageno-1) + ',')
                     self.outfp.write('%.3f,%.3f,%.3f,%.3f,' %
                                  (mergeBounds(self.startingItem.bbox, self.endingItem.bbox)))
                     self.write_text("'{{" + self.tagText + "'\n")
