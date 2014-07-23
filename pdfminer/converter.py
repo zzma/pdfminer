@@ -548,8 +548,8 @@ class TagConverter(PDFConverter):
                     self.outfp.write(str(self.pageno-1) + ',')
                     self.outfp.write('%.3f,%.3f,%.3f,%.3f,' %
                                  (item.bbox[0], item.bbox[1], item.bbox[2], item.bbox[3]))
-                    #self.outfp.write(item.wtype + ',')
-                    self.write_text(item.get_text() + '\n')
+                    self.write_text(item.get_text() + ',')
+                    self.outfp.write(item.wtype + '\n')
             elif isinstance(item, LTChar):
                 
                 prevChar = self.prevItem.get_text() if self.prevItem else ''

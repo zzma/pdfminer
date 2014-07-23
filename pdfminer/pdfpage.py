@@ -63,22 +63,40 @@ class PDFPage(object):
         self.rotate = (int_value(self.attrs.get('Rotate', 0))+360) % 360
         self.annots = list_value(self.attrs.get('Annots'))
         self.widgets = []
-        for an in self.annots:
-            try:
-                obj = dict_value(an.resolve())
-            except PDFObjectNotFound:
-                print 'object not found'
-                print an
-                continue
-            if 'Subtype' in obj and obj.get('Subtype') is LITERAL_WIDGET:
+
+        def get_widget_type(obj):
+            if 'FT' in obj:
                 if obj.get('FT') is LITERAL_TX:
-                    self.widgets.append(LTWidget(list_value(obj.get('Rect')), 'text', str_value(obj.get('T'))))
-                elif obj.get('FT') is LITERAL_CH:
-                    self.widgets.append(LTWidget(list_value(obj.get('Rect')), 'checkbox', str_value(obj.get('T'))))
-                elif obj.get('FT') is LITERAL_BTN:
-                    self.widgets.append(LTWidget(list_value(obj.get('Rect')), 'checkbox', str_value(obj.get('T'))))
+                    return 'text'
+                elif obj.get('FT') is LITERAL_CH or obj.get('FT') is LITERAL_BTN:
+                    return 'checkbox'
                 elif obj.get('FT') is LITERAL_SIG:
-                    self.widgets.append(LTWidget(list_value(obj.get('Rect')), 'signature', str_value(obj.get('T'))))
+                    return 'signature'
+                else:
+                    return None
+
+            
+        def create_widget(obj):
+            if 'Subtype' in obj and obj.get('Subtype') is LITERAL_WIDGET:
+                wtype = get_widget_type(obj)
+                if wtype:
+                    return LTWidget(list_value(obj.get('Rect')), wtype, str_value(obj.get('T')))
+                elif 'Parent' in obj:
+                    p = resolve1(obj.get('Parent'))
+                    return LTWidget(list_value(obj.get('Rect')), get_widget_type(p), str_value(p.get('T')))
+
+
+        def find_widgets(obj_list, widgets):
+            for an in obj_list:
+                try:
+                    obj = resolve1(an)
+                except PDFObjectNotFound:
+                    print 'object not found'
+                    print an
+
+                widgets.append(create_widget(obj))
+        
+        find_widgets(self.annots, self.widgets)
 
         self.beads = self.attrs.get('B')
         if 'Contents' in self.attrs:
